@@ -119,8 +119,7 @@ window.addEventListener('resize', resizeCanvas);
 function generateTwitterShareLink(score) {
     const text = `Save the squirrels! I saved ${score} squirrels! 🐿️ Try to beat my score! SaveTheSquirrels`;
     const url = encodeURIComponent('https://kbingol.github.io/savesquirrels/'); // Oyununuzun linkini buraya ekleyin
-    const hashtags = "SaveTheSquirrels,GameChallenge";
-    return `https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${url}&hashtags=${hashtags}`;
+    return `https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${url}`;
 }
 
 // Bekleme ekranı müziğini başlatmak için fonksiyon
