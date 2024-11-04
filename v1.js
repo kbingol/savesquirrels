@@ -1,67 +1,51 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// Set canvas to full screen dimensions
-function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-}
-resizeCanvas();
-
-// Update canvas size when window resizes
-window.addEventListener('resize', resizeCanvas);
-
-// Screen dimensions
+// Ekran boyutları
 let SCREEN_WIDTH = canvas.width;
 let SCREEN_HEIGHT = canvas.height;
 
-// Player settings
-const playerSize = 50;
-const playerRadius = playerSize / 2;
+// Boyutları dinamik hale getirmek için değişkenler
+let playerSize;
+let playerRadius;
+let enemySize;
+let enemyRadius;
+let rewardSize;
+let rewardRadius;
+
+// Oyuncu pozisyonu
 const playerPos = {
     x: SCREEN_WIDTH / 2,
     y: SCREEN_HEIGHT / 2
 };
 
-// Game variables
+// Oyun değişkenleri
 let gameStarted = false;
-
-// Enemy settings
-const enemySize = 50;
-const enemyRadius = enemySize / 2;
 let enemyList = [];
-let enemySpeed = 2; // Target speed
-let currentSpeed = enemySpeed; // Current speed
-
-// Reward (squirrel) settings
-const rewardSize = 30;
-const rewardRadius = rewardSize / 2;
+let enemySpeed = 2; // Hedef hız
+let currentSpeed = enemySpeed; // Anlık hız
 let rewardList = [];
-
-// Game settings
-const gameTime = 60; // seconds
+let gameTime = 60; // saniye
 let score = 0;
 let gameOver = false;
 let startTime = null;
-
-// Movement angle (in radians)
-let movementAngle = (225 * Math.PI) / 180; // Start towards upper left (225 degrees)
+let movementAngle = (225 * Math.PI) / 180; // Başlangıçta sol üste (225 derece)
 let targetAngle = movementAngle;
 
-// Load audio files
-const collectSound = new Audio('collect.wav'); // Squirrel collect sound
-const waitingMusic = new Audio('waiting_music.mp3'); // Waiting screen music
-const startSound = new Audio('start_sound.wav'); // Game start sound
-const collisionSound = new Audio('collision_sound.wav'); // Collision sound
-const successSound = new Audio('success_sound.wav'); // Game complete success sound
-const retrySound = new Audio('start_sound.wav'); // Retry sound
-const gameMusic = new Audio('game_music.mp3'); // Background music during game
+// Ses dosyalarını yükle
+const collectSound = new Audio('collect.wav');
+const waitingMusic = new Audio('waiting_music.mp3');
+const startSound = new Audio('start_sound.wav');
+const collisionSound = new Audio('collision_sound.wav');
+const successSound = new Audio('success_sound.wav');
+const retrySound = new Audio('start_sound.wav');
+const gameMusic = new Audio('game_music.mp3');
 
-// Loop background music
+// Müziklerin döngü ayarları
 waitingMusic.loop = true;
 gameMusic.loop = true;
 
-// Load images
+// Resimleri yükle
 const playerImage = new Image();
 playerImage.src = 'player.svg';
 
@@ -71,7 +55,7 @@ enemyImage.src = 'enemy.svg';
 const rewardImage = new Image();
 rewardImage.src = 'reward.svg';
 
-// Flags to track if images are loaded
+// Resimlerin yüklenip yüklenmediğini kontrol etmek için bayraklar
 let playerImageLoaded = false;
 let enemyImageLoaded = false;
 let rewardImageLoaded = false;
@@ -86,27 +70,7 @@ rewardImage.onload = () => {
     rewardImageLoaded = true;
 };
 
-// Function to start waiting music
-function playWaitingMusic() {
-    waitingMusic.currentTime = 0;
-    waitingMusic.play();
-}
-
-// Function to stop game music and start waiting music
-function stopGameMusicAndPlayWaitingMusic() {
-    gameMusic.pause();
-    gameMusic.currentTime = 0;
-    playWaitingMusic();
-}
-
-// User interaction required to play initial waiting music
-document.addEventListener('click', () => {
-    if (!gameStarted && !waitingMusicPlaying) {
-        playWaitingMusic();
-    }
-}, { once: true });
-
-// Track if waiting music is playing
+// Bekleme müziği kontrolü için bayrak
 let waitingMusicPlaying = false;
 
 waitingMusic.onplay = () => {
@@ -117,10 +81,65 @@ waitingMusic.onpause = () => {
     waitingMusicPlaying = false;
 };
 
-// **Control Function** (for both keyboard and touch controls)
+// Canvas boyutlandırma ve boyutları güncelleme fonksiyonu
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    SCREEN_WIDTH = canvas.width;
+    SCREEN_HEIGHT = canvas.height;
+
+    updateSizes();
+}
+
+// Boyutları ekran boyutuna göre güncelleyen fonksiyon
+function updateSizes() {
+    let baseUnit = Math.min(SCREEN_WIDTH, SCREEN_HEIGHT) / 30; // Ölçeklendirme için taban birim
+
+    playerSize = baseUnit * 2;
+    enemySize = baseUnit * 2;
+    rewardSize = baseUnit * 1;
+
+    playerRadius = playerSize / 2;
+    enemyRadius = enemySize / 2;
+    rewardRadius = rewardSize / 2;
+
+    // Oyuncu pozisyonunu güncelle
+    playerPos.x = SCREEN_WIDTH / 2;
+    playerPos.y = SCREEN_HEIGHT / 2;
+}
+
+// İlk boyutlandırmayı yap
+resizeCanvas();
+
+// Pencere boyutlandığında canvas boyutunu güncelle
+window.addEventListener('resize', resizeCanvas);
+
+// Skor paylaşımı için link oluşturma fonksiyonu
+function generateTwitterShareLink(score) {
+    const text = `Save the squirrels! I saved ${score} squirrels! 🐿️ Try to beat my score! SaveTheSquirrels`;
+    const url = encodeURIComponent('https://kbingol.github.io/savesquirrels/'); // Oyununuzun linkini buraya ekleyin
+    const hashtags = "SaveTheSquirrels,GameChallenge";
+    return `https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${url}&hashtags=${hashtags}`;
+}
+
+// Bekleme ekranı müziğini başlatmak için fonksiyon
+function playWaitingMusic() {
+    waitingMusic.currentTime = 0;
+    waitingMusic.play();
+}
+
+// İlk açılışta bekleme müziğini başlatmak için kullanıcı etkileşimi gereklidir
+document.addEventListener('click', () => {
+    if (!gameStarted && !waitingMusicPlaying) {
+        playWaitingMusic();
+    }
+}, { once: true });
+
+// **Kontrol Fonksiyonu** (Hem klavye hem de dokunmatik için)
 function handleControlInput() {
     if (!gameStarted) {
-        // Control input before game starts (start the game)
+        // Oyun başlamadan önce kontrol girdisi (oyunu başlat)
         waitingMusic.pause();
         waitingMusic.currentTime = 0;
 
@@ -135,21 +154,18 @@ function handleControlInput() {
         movementAngle = targetAngle;
         currentSpeed = enemySpeed;
 
-        // Start game music
         gameMusic.currentTime = 0;
         gameMusic.play();
 
         gameLoop();
     } else if (!gameOver) {
-        // Change direction during the game
         if (targetAngle === (225 * Math.PI) / 180) {
-            targetAngle = (315 * Math.PI) / 180; // Upper right (315 degrees)
+            targetAngle = (315 * Math.PI) / 180; // Sağ üste (315 derece)
         } else {
-            targetAngle = (225 * Math.PI) / 180; // Upper left (225 degrees)
+            targetAngle = (225 * Math.PI) / 180; // Sol üste (225 derece)
         }
-        currentSpeed *= 0.7; // Slow down to 70% temporarily
+        currentSpeed *= 0.7;
     } else {
-        // Control input to restart game after game over
         retrySound.play();
 
         waitingMusic.pause();
@@ -171,20 +187,20 @@ function handleControlInput() {
     }
 }
 
-// **Keyboard control**
+// **Klavye kontrolü**
 document.addEventListener('keydown', (event) => {
     if (event.code === 'Space') {
         handleControlInput();
     }
 });
 
-// **Touch control**
+// **Dokunmatik kontrolü**
 canvas.addEventListener('touchstart', (event) => {
     event.preventDefault();
     handleControlInput();
 });
 
-// **Mouse click control (for desktop)**
+// **Fare tıklaması kontrolü (Masaüstü cihazlar için)**
 canvas.addEventListener('mousedown', (event) => {
     handleControlInput();
 });
@@ -215,7 +231,6 @@ function updatePositions() {
     const speedDifference = enemySpeed - currentSpeed;
     currentSpeed += speedDifference * 0.05;
 
-    // Update enemy positions
     enemyList = enemyList.filter(enemy => {
         enemy.x += currentSpeed * cosAngle;
         enemy.y += currentSpeed * sinAngle;
@@ -233,7 +248,6 @@ function updatePositions() {
         return enemy.x + enemySize > 0 && enemy.x < SCREEN_WIDTH && enemy.y + enemySize > 0 && enemy.y < SCREEN_HEIGHT;
     });
 
-    // Update reward positions
     rewardList = rewardList.filter(reward => {
         reward.x += currentSpeed * cosAngle;
         reward.y += currentSpeed * sinAngle;
@@ -254,7 +268,7 @@ function updatePositions() {
     });
 }
 
-// Circle collision detection function
+// Çember çarpışma kontrol fonksiyonu
 function checkCircleCollision(pos1, radius1, pos2, radius2) {
     const dx = pos1.x - pos2.x;
     const dy = pos1.y - pos2.y;
@@ -278,7 +292,6 @@ function draw() {
 
     ctx.restore();
 
-    // Draw enemies
     enemyList.forEach(enemy => {
         if (enemyImageLoaded) {
             ctx.drawImage(enemyImage, enemy.x, enemy.y, enemySize, enemySize);
@@ -288,7 +301,6 @@ function draw() {
         }
     });
 
-    // Draw rewards
     rewardList.forEach(reward => {
         if (rewardImageLoaded) {
             ctx.drawImage(rewardImage, reward.x, reward.y, rewardSize, rewardSize);
@@ -324,6 +336,43 @@ function draw() {
             ctx.fillText('Squirrels collected: ' + score, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 20);
             ctx.fillText('Tap screen or press SPACE to try again.', SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 20);
 
+            // Add Twitter share button with background box
+            const shareLink = generateTwitterShareLink(score);
+            const boxWidth = SCREEN_WIDTH * 0.4; // Ekran boyutuna göre ayarla
+            const boxHeight = SCREEN_HEIGHT * 0.08;
+
+            // Draw background box for the Twitter share button
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; // Semi-transparent black background
+            const boxX = SCREEN_WIDTH / 2 - boxWidth / 2;
+            const boxY = SCREEN_HEIGHT / 2 + 65;
+            ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+
+            // Draw the share button text
+            ctx.font = '20px Arial';
+            ctx.fillStyle = 'white';
+            ctx.textAlign = 'center';
+            ctx.fillText('Share your score on X:', SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 60);
+            ctx.fillText('Tap here to share!', SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 95);
+
+            // Make the background box clickable
+            function onClickTwitterShare(event) {
+                const rect = canvas.getBoundingClientRect();
+                const clickX = event.clientX - rect.left;
+                const clickY = event.clientY - rect.top;
+
+                if (
+                    clickX > boxX &&
+                    clickX < boxX + boxWidth &&
+                    clickY > boxY &&
+                    clickY < boxY + boxHeight
+                ) {
+                    window.open(shareLink, '_blank');
+                    canvas.removeEventListener('click', onClickTwitterShare);
+                }
+            }
+
+            canvas.addEventListener('click', onClickTwitterShare);
+
             if (!waitingMusicPlaying) {
                 playWaitingMusic();
             }
@@ -332,6 +381,9 @@ function draw() {
 }
 
 function gameLoop() {
+    // Ekran boyutu değiştiyse güncelle
+    resizeCanvas();
+
     if (!gameStarted) {
         draw();
         requestAnimationFrame(gameLoop);
@@ -372,12 +424,6 @@ function gameLoop() {
 
     enemySpeed = 8 + Math.floor(elapsedTime / 10);
 
-    SCREEN_WIDTH = canvas.width;
-    SCREEN_HEIGHT = canvas.height;
-
-    playerPos.x = SCREEN_WIDTH / 2;
-    playerPos.y = SCREEN_HEIGHT / 2;
-
     dropEnemies();
     dropRewards();
     updatePositions();
@@ -386,4 +432,5 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
+// Oyun başlamadan önce ilk çizim
 draw();
