@@ -214,7 +214,7 @@ function dropEnemies() {
 }
 
 function dropRewards() {
-    if (Math.random() < 0.01) {
+    if (Math.random() < 0.02) {
         const x = Math.random() * (SCREEN_WIDTH - rewardSize);
         const y = SCREEN_HEIGHT - rewardSize;
         rewardList.push({ x, y });
