@@ -1,21 +1,21 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// Tam ekran yapmak için canvas boyutunu pencere boyutuna ayarlayalım
+// Set canvas to full screen dimensions
 function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 }
 resizeCanvas();
 
-// Pencere boyutlandığında canvas boyutunu güncelle
+// Update canvas size when window resizes
 window.addEventListener('resize', resizeCanvas);
 
-// Ekran boyutları
+// Screen dimensions
 let SCREEN_WIDTH = canvas.width;
 let SCREEN_HEIGHT = canvas.height;
 
-// Oyuncu ayarları
+// Player settings
 const playerSize = 50;
 const playerRadius = playerSize / 2;
 const playerPos = {
@@ -23,45 +23,45 @@ const playerPos = {
     y: SCREEN_HEIGHT / 2
 };
 
-// Oyun değişkenleri
+// Game variables
 let gameStarted = false;
 
-// Engel ayarları
+// Enemy settings
 const enemySize = 50;
 const enemyRadius = enemySize / 2;
 let enemyList = [];
-let enemySpeed = 2; // Hedef hız
-let currentSpeed = enemySpeed; // Anlık hız
+let enemySpeed = 2; // Target speed
+let currentSpeed = enemySpeed; // Current speed
 
-// Ödül kutusu (sincap) ayarları
+// Reward (squirrel) settings
 const rewardSize = 30;
 const rewardRadius = rewardSize / 2;
 let rewardList = [];
 
-// Oyun ayarları
-const gameTime = 60; // saniye
+// Game settings
+const gameTime = 60; // seconds
 let score = 0;
 let gameOver = false;
 let startTime = null;
 
-// Hareket açısı (radyan cinsinden)
-let movementAngle = (225 * Math.PI) / 180; // Başlangıçta sol üste (225 derece)
+// Movement angle (in radians)
+let movementAngle = (225 * Math.PI) / 180; // Start towards upper left (225 degrees)
 let targetAngle = movementAngle;
 
-// Ses dosyalarını yükle
-const collectSound = new Audio('collect.wav'); // Sincap toplama sesi
-const waitingMusic = new Audio('waiting_music.mp3'); // Bekleme ekranı müziği
-const startSound = new Audio('start_sound.wav'); // Oyuna başlama sesi
-const collisionSound = new Audio('collision_sound.wav'); // Engele çarpma sesi
-const successSound = new Audio('success_sound.wav'); // Oyunu başarıyla tamamlama sesi
-const retrySound = new Audio('start_sound.wav'); // Yeniden deneme sesi
-const gameMusic = new Audio('game_music.mp3'); // Oyun esnasında arka plan müziği
+// Load audio files
+const collectSound = new Audio('collect.wav'); // Squirrel collect sound
+const waitingMusic = new Audio('waiting_music.mp3'); // Waiting screen music
+const startSound = new Audio('start_sound.wav'); // Game start sound
+const collisionSound = new Audio('collision_sound.wav'); // Collision sound
+const successSound = new Audio('success_sound.wav'); // Game complete success sound
+const retrySound = new Audio('start_sound.wav'); // Retry sound
+const gameMusic = new Audio('game_music.mp3'); // Background music during game
 
-// Müziklerin döngü ayarları
+// Loop background music
 waitingMusic.loop = true;
 gameMusic.loop = true;
 
-// Resimleri yükle
+// Load images
 const playerImage = new Image();
 playerImage.src = 'player.svg';
 
@@ -71,7 +71,7 @@ enemyImage.src = 'enemy.svg';
 const rewardImage = new Image();
 rewardImage.src = 'reward.svg';
 
-// Resimlerin yüklenip yüklenmediğini kontrol etmek için bayraklar
+// Flags to track if images are loaded
 let playerImageLoaded = false;
 let enemyImageLoaded = false;
 let rewardImageLoaded = false;
@@ -86,29 +86,27 @@ rewardImage.onload = () => {
     rewardImageLoaded = true;
 };
 
-// Bekleme ekranı müziğini başlatmak için fonksiyon
+// Function to start waiting music
 function playWaitingMusic() {
     waitingMusic.currentTime = 0;
     waitingMusic.play();
 }
 
-// Oyun müziğini durdurmak ve bekleme müziğini başlatmak için fonksiyon
+// Function to stop game music and start waiting music
 function stopGameMusicAndPlayWaitingMusic() {
     gameMusic.pause();
     gameMusic.currentTime = 0;
-
-    // Bekleme müziğini başlat
     playWaitingMusic();
 }
 
-// İlk açılışta bekleme müziğini başlatmak için kullanıcı etkileşimi gereklidir
+// User interaction required to play initial waiting music
 document.addEventListener('click', () => {
     if (!gameStarted && !waitingMusicPlaying) {
         playWaitingMusic();
     }
 }, { once: true });
 
-// Bekleme müziğinin çalıp çalmadığını takip etmek için bayrak
+// Track if waiting music is playing
 let waitingMusicPlaying = false;
 
 waitingMusic.onplay = () => {
@@ -119,43 +117,42 @@ waitingMusic.onpause = () => {
     waitingMusicPlaying = false;
 };
 
-// **Kontrol Fonksiyonu** (Hem klavye hem de dokunmatik için)
+// **Control Function** (for both keyboard and touch controls)
 function handleControlInput() {
     if (!gameStarted) {
-        // Oyun başlamadan önce kontrol girdisi (oyunu başlat)
-        waitingMusic.pause(); // Bekleme müziğini durdur
+        // Control input before game starts (start the game)
+        waitingMusic.pause();
         waitingMusic.currentTime = 0;
 
-        startSound.play(); // Başlama sesini çal
+        startSound.play();
 
         gameStarted = true;
         startTime = Date.now();
-        gameOver = false; // Oyun bittiğinde yeniden başlamak için
-        enemyList = [];   // Engelleri sıfırla
-        rewardList = [];  // Ödülleri sıfırla
-        score = 0;        // Puanı sıfırla
-        movementAngle = targetAngle; // Hareket açısını resetle
-        currentSpeed = enemySpeed;   // Hızı resetle
+        gameOver = false;
+        enemyList = [];
+        rewardList = [];
+        score = 0;
+        movementAngle = targetAngle;
+        currentSpeed = enemySpeed;
 
-        // Oyun müziğini başlat
+        // Start game music
         gameMusic.currentTime = 0;
         gameMusic.play();
 
         gameLoop();
     } else if (!gameOver) {
-        // Oyun sırasında akış yönünü değiştirmek için kontrol girdisi
+        // Change direction during the game
         if (targetAngle === (225 * Math.PI) / 180) {
-            targetAngle = (315 * Math.PI) / 180; // Sağ üste (315 derece)
+            targetAngle = (315 * Math.PI) / 180; // Upper right (315 degrees)
         } else {
-            targetAngle = (225 * Math.PI) / 180; // Sol üste (225 derece)
+            targetAngle = (225 * Math.PI) / 180; // Upper left (225 degrees)
         }
-        // Hızı düşür ve tekrar artırmak için ayarla
-        currentSpeed *= 0.7; // Hızı %70'e düşür
+        currentSpeed *= 0.7; // Slow down to 70% temporarily
     } else {
-        // Oyun bittiğinde kontrol girdisi (yeniden başlat)
-        retrySound.play(); // Yeniden deneme sesini çal
+        // Control input to restart game after game over
+        retrySound.play();
 
-        waitingMusic.pause(); // Bekleme müziğini durdur
+        waitingMusic.pause();
         waitingMusic.currentTime = 0;
 
         gameStarted = true;
@@ -167,7 +164,6 @@ function handleControlInput() {
         movementAngle = targetAngle;
         currentSpeed = enemySpeed;
 
-        // Oyun müziğini başlat
         gameMusic.currentTime = 0;
         gameMusic.play();
 
@@ -175,20 +171,20 @@ function handleControlInput() {
     }
 }
 
-// **Klavye kontrolü**
+// **Keyboard control**
 document.addEventListener('keydown', (event) => {
     if (event.code === 'Space') {
         handleControlInput();
     }
 });
 
-// **Dokunmatik kontrolü**
+// **Touch control**
 canvas.addEventListener('touchstart', (event) => {
-    event.preventDefault(); // Dokunma olayının varsayılan davranışını engelle (örn. ekranı kaydırma)
+    event.preventDefault();
     handleControlInput();
 });
 
-// **Fare tıklaması kontrolü (Masaüstü cihazlar için)**
+// **Mouse click control (for desktop)**
 canvas.addEventListener('mousedown', (event) => {
     handleControlInput();
 });
@@ -210,64 +206,55 @@ function dropRewards() {
 }
 
 function updatePositions() {
-    // Hareket açısını hedef açıya doğru yumuşakça güncelle
     const angleDifference = targetAngle - movementAngle;
-    movementAngle += angleDifference * 0.1; // 0.1 katsayısı değişimin ne kadar hızlı olacağını belirler
+    movementAngle += angleDifference * 0.1;
 
     const cosAngle = Math.cos(movementAngle);
     const sinAngle = Math.sin(movementAngle);
 
-    // Hızı hedef hıza doğru yumuşakça artır
     const speedDifference = enemySpeed - currentSpeed;
-    currentSpeed += speedDifference * 0.05; // Hızın ne kadar hızlı artacağını belirler
+    currentSpeed += speedDifference * 0.05;
 
-    // Enemy güncelleme
+    // Update enemy positions
     enemyList = enemyList.filter(enemy => {
         enemy.x += currentSpeed * cosAngle;
         enemy.y += currentSpeed * sinAngle;
 
-        // Engelin merkezi
         const enemyCenter = {
             x: enemy.x + enemyRadius,
             y: enemy.y + enemyRadius
         };
 
-        // Çarpışma kontrolü
         if (checkCircleCollision(playerPos, playerRadius, enemyCenter, enemyRadius)) {
-            collisionSound.play(); // Engele çarpma sesini çal
+            collisionSound.play();
             gameOver = true;
         }
 
-        // Ekranın dışında kalanları sil
         return enemy.x + enemySize > 0 && enemy.x < SCREEN_WIDTH && enemy.y + enemySize > 0 && enemy.y < SCREEN_HEIGHT;
     });
 
-    // Ödül kutusu (sincap) güncelleme
+    // Update reward positions
     rewardList = rewardList.filter(reward => {
         reward.x += currentSpeed * cosAngle;
         reward.y += currentSpeed * sinAngle;
 
-        // Ödülün merkezi
         const rewardCenter = {
             x: reward.x + rewardRadius,
             y: reward.y + rewardRadius
         };
 
-        // Çarpışma kontrolü
         if (checkCircleCollision(playerPos, playerRadius, rewardCenter, rewardRadius)) {
             score += 1;
-            // Ses dosyasını çal
-            collectSound.currentTime = 0; // Sesin başından çal
+            collectSound.currentTime = 0;
             collectSound.play();
-            return false; // Ödülü listeden çıkar
+            return false;
         }
 
-        // Ekranın dışında kalanları sil
         return reward.x + rewardSize > 0 && reward.x < SCREEN_WIDTH && reward.y + rewardSize > 0 && reward.y < SCREEN_HEIGHT;
     });
 }
 
-// Çember çarpışma kontrol fonksiyonu
+// Circle collision detection function
 function checkCircleCollision(pos1, radius1, pos2, radius2) {
     const dx = pos1.x - pos2.x;
     const dy = pos1.y - pos2.y;
@@ -278,25 +265,20 @@ function checkCircleCollision(pos1, radius1, pos2, radius2) {
 function draw() {
     ctx.clearRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
-    // Oyuncuyu çiz
     ctx.save();
-    // Dönüş merkezini oyuncunun merkezine ayarla
     ctx.translate(playerPos.x, playerPos.y);
-    // Oyuncuyu, engellerin geldiği yöne doğru döndür
     ctx.rotate(movementAngle + Math.PI);
 
     if (playerImageLoaded) {
-        // Resim varsa, döndürülmüş halde çiz
         ctx.drawImage(playerImage, -playerSize / 2, -playerSize / 2, playerSize, playerSize);
     } else {
-        // Resim yoksa, kareyi döndürülmüş halde çiz
         ctx.fillStyle = 'black';
         ctx.fillRect(-playerSize / 2, -playerSize / 2, playerSize, playerSize);
     }
 
     ctx.restore();
 
-    // Enemy'leri çiz
+    // Draw enemies
     enemyList.forEach(enemy => {
         if (enemyImageLoaded) {
             ctx.drawImage(enemyImage, enemy.x, enemy.y, enemySize, enemySize);
@@ -306,7 +288,7 @@ function draw() {
         }
     });
 
-    // Ödül kutularını (sincapları) çiz
+    // Draw rewards
     rewardList.forEach(reward => {
         if (rewardImageLoaded) {
             ctx.drawImage(rewardImage, reward.x, reward.y, rewardSize, rewardSize);
@@ -316,19 +298,16 @@ function draw() {
         }
     });
 
-    // Puanı göster (oyun sırasında)
     if (gameStarted && !gameOver) {
         ctx.fillStyle = 'black';
         ctx.font = '20px Arial';
-        ctx.fillText('Topladığın sincap sayısı: ' + score, 10, SCREEN_HEIGHT - 20);
+        ctx.fillText('Collected squirrels: ' + score, 10, SCREEN_HEIGHT - 20);
 
-        // Süreyi göster
         const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
         const remainingTime = Math.max(gameTime - elapsedTime, 0);
-        ctx.fillText('Kalan Süre: ' + remainingTime, 10, SCREEN_HEIGHT - 50);
+        ctx.fillText('Time remaining: ' + remainingTime, 10, SCREEN_HEIGHT - 50);
     }
 
-    // Oyun başlamadıysa veya bittiğinde mesajları göster
     if (!gameStarted || gameOver) {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         ctx.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -338,14 +317,13 @@ function draw() {
         ctx.textAlign = 'center';
 
         if (!gameStarted) {
-            ctx.fillText('Sincapları Kurtar! Çığ Geliyor!', SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 60);
-            ctx.fillText('60 saniye içinde engellere çarpmadan toplayabildiğin kadar sincap topla.', SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 20);
-            ctx.fillText('Oyuna başlamak için ekrana dokun veya SPACE tuşuna bas.', SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 20);
+            ctx.fillText('Save the squirrels! Avalanche incoming!', SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 60);
+            ctx.fillText('Collect as many squirrels as you can without crashing in 60 seconds.', SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 20);
+            ctx.fillText('Tap screen or press SPACE to start.', SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 20);
         } else if (gameOver) {
-            ctx.fillText('Şu kadar sincap topladın: ' + score, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 20);
-            ctx.fillText('Yeniden denemek için ekrana dokun veya SPACE tuşuna bas.', SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 20);
+            ctx.fillText('Squirrels collected: ' + score, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 20);
+            ctx.fillText('Tap screen or press SPACE to try again.', SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 20);
 
-            // Oyun bittiğinde bekleme müziğini çal
             if (!waitingMusicPlaying) {
                 playWaitingMusic();
             }
@@ -361,17 +339,14 @@ function gameLoop() {
     }
 
     if (gameOver) {
-        // Oyun müziğini durdur
         gameMusic.pause();
         gameMusic.currentTime = 0;
 
-        // Eğer engele çarpmadan oyunu bitirdiyse
         const elapsedTime = (Date.now() - startTime) / 1000;
         if (elapsedTime >= gameTime) {
-            successSound.play(); // Oyunu başarıyla tamamlama sesi
+            successSound.play();
         }
 
-        // Bekleme müziğini başlat
         if (!waitingMusicPlaying) {
             playWaitingMusic();
         }
@@ -383,14 +358,10 @@ function gameLoop() {
     const elapsedTime = (Date.now() - startTime) / 1000;
     if (elapsedTime > gameTime) {
         gameOver = true;
-
-        // Oyun müziğini durdur
         gameMusic.pause();
         gameMusic.currentTime = 0;
+        successSound.play();
 
-        successSound.play(); // Oyunu başarıyla tamamlama sesi
-
-        // Bekleme müziğini başlat
         if (!waitingMusicPlaying) {
             playWaitingMusic();
         }
@@ -399,14 +370,11 @@ function gameLoop() {
         return;
     }
 
-    // Hız artışı
     enemySpeed = 8 + Math.floor(elapsedTime / 10);
 
-    // Ekran boyutlarını güncelle (pencere boyutlandırıldığında)
     SCREEN_WIDTH = canvas.width;
     SCREEN_HEIGHT = canvas.height;
 
-    // Oyuncunun pozisyonunu güncelle (pencere boyutlandırıldığında)
     playerPos.x = SCREEN_WIDTH / 2;
     playerPos.y = SCREEN_HEIGHT / 2;
 
@@ -418,5 +386,4 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
-// Oyun başlamadan önce ilk çizim
 draw();
