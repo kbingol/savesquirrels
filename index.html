@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Sincapları Kurtar Oyunu</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Sayfanın kaydırılmasını engeller */
+            touch-action: none; /* Dokunma olaylarının varsayılan davranışını engeller */
+        }
+        #gameCanvas {
+            display: block; /* Canvas'ın tam ekran olmasını sağlar */
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+    </style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+<script src="v1.js"></script>
+</body>
+</html>
